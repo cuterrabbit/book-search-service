@@ -1,0 +1,93 @@
+services:
+  mariadb:
+    image: mariadb:11
+    environment:
+      MARIADB_ROOT_PASSWORD: ${MARIADB_ROOT_PASSWORD:-root_password}
+      MARIADB_DATABASE: ${DB_NAME:-book_search}
+      MARIADB_USER: ${DB_USER:-book_user}
+      MARIADB_PASSWORD: ${DB_PASSWORD:-book_password}
+    ports:
+      - "3307:3306"
+    volumes:
+      - mariadb_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  elasticsearch:
+    build: ./elasticsearch
+    environment:
+      discovery.type: single-node
+      xpack.security.enabled: "false"
+      ES_JAVA_OPTS: "-Xms512m -Xmx512m"
+    ports:
+      - "9200:9200"
+    volumes:
+      - es_data:/usr/share/elasticsearch/data
+    healthcheck:
+      test: ["CMD-SHELL", "curl -s http://localhost:9200/_cluster/health | grep -q '\"status\"'"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  command-service:
+    build: ./command-service
+    environment:
+      DB_HOST: mariadb
+      DB_PORT: "3306"
+      DB_USER: ${DB_USER:-book_user}
+      DB_PASSWORD: ${DB_PASSWORD:-book_password}
+      DB_NAME: ${DB_NAME:-book_search}
+    volumes:
+      - ./data:/data:ro
+    ports:
+      - "8081:8000"
+    depends_on:
+      mariadb:
+        condition: service_healthy
+
+  query-service:
+    build: ./query-service
+    environment:
+      ES_HOST: elasticsearch
+      ES_PORT: "9200"
+    ports:
+      - "8082:8000"
+    depends_on:
+      elasticsearch:
+        condition: service_healthy
+
+  outbox-relay:
+    build: ./outbox-relay
+    environment:
+      DB_HOST: mariadb
+      DB_PORT: "3306"
+      DB_USER: ${DB_USER:-book_user}
+      DB_PASSWORD: ${DB_PASSWORD:-book_password}
+      DB_NAME: ${DB_NAME:-book_search}
+      ES_HOST: elasticsearch
+      ES_PORT: "9200"
+    ports:
+      - "8083:8000"
+    depends_on:
+      mariadb:
+        condition: service_healthy
+      elasticsearch:
+        condition: service_healthy
+
+  nginx:
+    image: nginx:1.27-alpine
+    volumes:
+      - ./nginx/conf.d:/etc/nginx/conf.d:ro
+      - ./frontend:/usr/share/nginx/html:ro
+    ports:
+      - "80:80"
+    depends_on:
+      - command-service
+      - query-service
+
+volumes:
+  mariadb_data:
+  es_data:

@@ -1,0 +1,9 @@
+fastapi
+uvicorn[standard]
+sqlalchemy[asyncio]
+asyncmy
+elasticsearch>=8.15,<9
+aiohttp
+pydantic
+pydantic-settings
+prometheus-fastapi-instrumentator
