@@ -61,7 +61,7 @@ docker compose exec command-service python -m app.cli.load_csv
 
 - **관측성**: OpenTelemetry로 command-service → outbox-relay → Elasticsearch까지 요청 하나가 흘러가는 경로를 트레이싱하고, 구조화된 로그를 남겨 Grafana 대시보드에서 outbox 적체량이나 relay 지연을 바로 확인하고 싶습니다.
 
-- **동기화 방식 고도화**: 지금은 outbox-relay가 `book_outbox` 테이블을 폴링하는 방식인데, Debezium 같은 CDC 도구로 MariaDB를 직접 읽어 Kafka로 흘려보내는 방식도 시도해보고 싶습니다. 애플리케이션 Layer에서 outbox 이벤트를 남길 필요가 없어지고, 메시지 큐의 이점도 얻을 수 있습니다. 다만 이번 과제 규모(3만 건, 트래픽 거의 없음)에는 Kafka+Debezium 인프라가 과하다고 판단해 지금의 Outbox+Polling Relay로 구현했습니다.
+- **동기화 방식 고도화**: 지금은 outbox-relay가 `book_outbox` 테이블을 폴링하는 방식인데, Debezium 같은 CDC 도구로 MariaDB를 직접 읽어 Kafka로 흘려보내는 방식도 시도해보고 싶습니다. 애플리케이션 Layer에서 outbox 이벤트를 남길 필요가 없어지고, 메시지 큐의 이점도 얻을 수 있습니다. 다만 이번 과제 규모에는 Kafka+Debezium 인프라가 과하다고 판단해 지금의 Outbox+Polling Relay로 구현했습니다.
 
 - **네트워크 격리**: 개발 편의를 위해 MariaDB·Elasticsearch는 물론 command-service/query-service/outbox-relay까지 전부 호스트 포트로 열어놨는데, 이 포트 매핑을 없애서 nginx만 외부에 노출되고 나머지는 도커 내부 네트워크에서만 접근 가능하게 만들고 싶습니다. 실제 배포라면 nginx가 유일한 진입점이라는 전제가 지켜져야 의미가 있는데, 지금은 그 전제가 완전하지 않은 상태입니다.
 
